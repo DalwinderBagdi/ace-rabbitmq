@@ -1,0 +1,1 @@
+mqsisetdbparms -w /home/aceuser/ace-server -n odbc::MYSQLDATABASE -u <MY-SQL-USERNAME> -p <MY-SQL-PASSWORD>

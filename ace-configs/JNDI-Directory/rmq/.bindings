@@ -1,0 +1,42 @@
+#Define the Connection Factory object
+ConnectionFactory/ClassName=javax.jms.ConnectionFactory
+ConnectionFactory/FactoryName=com.rabbitmq.jms.admin.RMQObjectFactory
+ConnectionFactory/RefAddr/0/Content=jms/ConnectionFactory
+ConnectionFactory/RefAddr/0/Type=name
+ConnectionFactory/RefAddr/0/Encoding=String
+ConnectionFactory/RefAddr/1/Content=javax.jms.ConnectionFactory
+ConnectionFactory/RefAddr/1/Type=type
+ConnectionFactory/RefAddr/1/Encoding=String
+ConnectionFactory/RefAddr/2/Content=com.rabbitmq.jms.admin.RMQObjectFactory
+ConnectionFactory/RefAddr/2/Type=factory
+ConnectionFactory/RefAddr/2/Encoding=String
+
+# Define the location of the broke, likely localhost, and the VirtualHost these resources will reside in
+ConnectionFactory/RefAddr/3/Content=###RABBITMQ-URL###
+ConnectionFactory/RefAddr/3/Type=host
+ConnectionFactory/RefAddr/3/Encoding=String
+ConnectionFactory/RefAddr/4/Content=###RABBITMQ-PORT###
+ConnectionFactory/RefAddr/4/Type=port
+ConnectionFactory/RefAddr/4/Encoding=String
+ConnectionFactory/RefAddr/5/Content=###RABBITMQ-USER###
+ConnectionFactory/RefAddr/5/Type=username
+ConnectionFactory/RefAddr/5/Encoding=String
+ConnectionFactory/RefAddr/6/Content=###RABBITMQ-PASSWORD###
+ConnectionFactory/RefAddr/6/Type=password
+ConnectionFactory/RefAddr/6/Encoding=String
+
+# Define an example Queue
+Queue1/ClassName=javax.jms.Queue
+Queue1/FactoryName=com.rabbitmq.jms.admin.RMQObjectFactory
+Queue1/RefAddr/0/Content=jms/Queue
+Queue1/RefAddr/0/Type=name
+Queue1/RefAddr/0/Encoding=String
+Queue1/RefAddr/1/Content=javax.jms.Queue
+Queue1/RefAddr/1/Type=type
+Queue1/RefAddr/1/Encoding=String
+Queue1/RefAddr/2/Content=com.rabbitmq.jms.admin.RMQObjectFactory
+Queue1/RefAddr/2/Type=factory
+Queue1/RefAddr/2/Encoding=String
+Queue1/RefAddr/3/Content=Queue1 # RabbitMQ queue name
+Queue1/RefAddr/3/Type=destinationName
+Queue1/RefAddr/3/Encoding=String
