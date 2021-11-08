@@ -1,0 +1,220 @@
+== Sample App Connect v12 Flow with Rabbit MQ and MySQL
+
+This flow uses a JMS input to read off an MQ queue. It uses a mapping node to add the ProcessedDate and ProcessedSuccess fields.
+Using a JMS Output node, the data is added to a RabbitMQ queue. The flow then adds the data to a MySQL database.
+
+image:./readme-images/flow.png[]
+
+
+.Directory Contents:
+[%collapsible]
+====
+[source, shell]
+----
+.
+├── ACE-MQ-Rabbit-MySQL.zip
+├── README.asciidoc
+├── ace-configs
+│   ├── JNDI-Directory
+│   │   ├── input
+│   │   └── rmq
+│   ├── odbcini
+│   │   ├── odbc.ini
+│   │   └── odbcinst.ini
+│   ├── serverconf
+│   │   └── server.conf.yaml
+│   └── setdbparms
+│       └── setdbparms.txt
+├── custom-ace-image
+│   ├── Dockerfile
+│   └── ace
+│       ├── drivers
+│       │   └── mysql-connector-odbc-8.0.26-1.el8.x86_64.rpm
+│       └── rabbitmqjars
+│           ├── amqp-client-5.13.1.jar
+│           ├── fscontext-4.4.2.jar
+│           ├── geronimo-jms_1.1_spec-1.1.1.jar
+│           ├── rabbitmq-jms-2.3.0.jar
+│           └── slf4j-api-1.7.5.jar
+└── readme-images
+    ├── ace-import.png
+    ├── ace-toolkit.png
+    ├── config-bindings.png
+    ├── config-odbc-ini.png
+    ├── config-server-conf-yaml.png
+    ├── config-set-db-parms.png
+    ├── file-import.png
+    └── flow.png
+----
+====
+
+=== Setup
+
+==== Importing the ACE flow:
+
+The project interchange contains the default policy.
+
+.. Click File -> Import -> IBM Integration -> Project Interchange
++
+image:./readme-images/file-import.png[640,480]
+
+.. Select `link:ACE-MQ-Rabbit-MySQL.zip[]` that is in this repo. Tick JMSInputAndOutput
++
+image:./readme-images/ace-import.png[640,480]
+
+.. Click Finish.
++
+Your ace toolkit should look like this:
++
+image:./readme-images/ace-toolkit.png[640,480]
+
+==== Deploying on OpenShift
+
+. Creating a RabbitMQ instance
++
+In order to deploy a RabbitMQ instance, official documentation has been followed using the kubernetes Operator: https://www.rabbitmq.com/kubernetes/operator/using-operator.html
+
+. Create custom ACE image
++
+The `custom-ace-image` contains a Dockerfile for the custom ACE image.
+This dockerfile copies in the RabbitMQ jars + MySQL drivers that are needed for the sample flow.
++
+.To build the image:
+[%collapsible]
+====
+.. Login to the IBM private registry
++
+The link:custom-ace-image/Dockerfile[] pulls from the ibm private registry "cp.icr.io". In order to create the docker image, you need to login to this registry with the entitlement key. You can get the credentials from the ibm-entitlement-key secret that is saved onto your cluster on the ACE namespace:
++
+[source, bash]
+----
+$ ibm_registry_username="$(oc get -n <ACE-NAMESPACE> secrets ibm-entitlement-key -o json | jq -r '.data[".dockerconfigjson"]' | base64 -d | jq -r '.auths["cp.icr.io"].username')"
+
+$ ibm_registry_password="$(oc get -n <ACE-NAMESPACE> secrets ibm-entitlement-key -o json | jq -r '.data[".dockerconfigjson"]' | base64 -d | jq -r '.auths["cp.icr.io"].password')"
+
+$ docker login cp.icr.io -u $ibm_registry_username -p $ibm_registry_password
+----
++
+.. Build the docker image
++
+To create the docker image, run the following from the `custom-ace-image` directory:
++
+[source,bash]
+----
+$ docker_registry_hostname=$(oc get routes -n openshift-image-registry -o=jsonpath='{.items[0].spec.host}')
+
+$ ace_namespace=<FILL ME IN>
+
+$ docker build -t $docker_registry_hostname/$ace_namespace/ace-rabbit-mysql:1.0 .
+----
++
+.. Login to the OpenShift registry
++
+We need to push the image to the docker registry on OpenShift. In order to do this we must first login to the docker registry
++
+[source,bash]
+----
+$ docker login $docker_registry_hostname -u $(oc whoami) -p $(oc whoami -t)
+----
+
+.. Push the new image
++
+[source, bash]
+----
+$ docker push $docker_registry_hostname/$ace_namespace/ace-rabbit-mysql:1.0
+----
+
+.. Check that the image has been pushed
++
+[source,bash]
+----
+$ oc get is -n $ace_namespace
+NAME                        IMAGE REPOSITORY                                                                                    TAGS   UPDATED
+ace-rabbit-mysql            default-route-openshift-image-registry.apps.aws-ocp-htcjl3br.ibmdtepaks.com/ace/ace-rabbit-mysql    1.0    32 hours ago
+
+
+----
+====
+
+. ACE configurations
++
+`ace-configs` folder contains all the configurations needed for the flow.
+
+.. Server conf yaml
++
+Create a configuration of type `server.conf.yaml` that contains the contents of link:ace-configs/serverconf/server.conf.yaml[]
++
+image:./readme-images/config-server-conf-yaml.png[640,480]
++
+Please note the server.conf.yaml exposes the debug port for development purposes when using the ACE Toolkit.
+
+.. ODBC ini file
++
+Create a configuration of type `odbc.ini` that contains the contents of link:ace-configs/odbcini/odbc.ini[]
++
+image:./readme-images/config-odbc-ini.png[640,480]
+
+.. Set DB Params
++
+Create a configuration of type `setdbparms.txt` that contains the contents of link:ace-configs/setdbparms/setdbparms.txt[]
++
+image:./readme-images/config-set-db-parms.png[640,480]
+
+.. Bindings
++
+The link:ace-configs/JNDI-Directory[] contains 2 subfolders that hold the `.bindings` files for the input (MQ) and output (RMQ) nodes.
++
+The `.bindings` files in this repo have replacement tokens following the pattern `###CONFIGURATION###`, e.g. `###MQ-PORT###`. These need to be replaced with the correct values.
++
+It is recommended to use `JMSAdmin` tool to regenerate this file for MQ.
++
+Create a ZIP from the JNDI-Directory with the modified bindings files. Create a configuration of type `generic` that contains this zip.
++
+image:./readme-images/config-bindings.png[640,480]
+
+. ACE Integration server
++
+Create an integration server including the configurations that were made in the previous step. Set the container image to be the custom image that was pushed to the ACE namespace.
++
+[source, yaml]
+----
+apiVersion: appconnect.ibm.com/v1beta1
+kind: IntegrationServer
+metadata:
+  name: ace-rabbit-mysql
+  namespace: ace
+spec:
+  enableMetrics: true
+  license:
+    accept: true
+    license: L-KSBM-C37J2R
+    use: CloudPakForIntegrationNonProduction
+  pod:
+    containers:
+      runtime:
+        image: >-
+          image-registry.openshift-image-registry.svc:5000/ace/ace-rabbit-mysql:1.0
+        imagePullPolicy: Always
+  adminServerSecure: true
+  router:
+    timeout: 120s
+  designerFlowsOperationMode: disabled
+  createDashboardUsers: true
+  service:
+    endpointType: http
+  version: 12.0.1.0-r3
+  replicas: 1
+  barURL: >-
+    https://dashboard-dash:3443/v1/directories/jmsrmqsql?428c3e9c-e37d-4a7f-a935-8e6bcb5341b7
+  configurations:
+    - bindings
+    - odbcini
+    - serverconfyaml
+    - setdbparms
+----
+
+
+
+
+
+
